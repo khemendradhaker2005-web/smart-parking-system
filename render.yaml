@@ -1,0 +1,72 @@
+# ========================================================
+# PARKSMART CAMPUS PARKING - RENDER BLUEPRINT CONFIGURATION
+# Documentation: https://render.com/docs/blueprint-spec
+# ========================================================
+
+databases:
+  # Managed PostgreSQL Database for Production Persistence
+  - name: parksmart-db
+    databaseName: smart_parking_db
+    user: smart_parking_user
+    plan: free
+    region: oregon
+
+services:
+  # --------------------------------------------------------
+  # SERVICE 2: BACKEND (Node.js + Express + Socket.IO API)
+  # --------------------------------------------------------
+  - type: web
+    name: parksmart-backend
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: parksmart-db
+          property: connectionString
+      - key: DB_SSL
+        value: "true"
+      - key: DB_POOL_MAX
+        value: "10"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: AUTO_SEED
+        value: "true"
+      - key: UPI_VPA
+        value: smartparking@icici
+      - key: UPI_PAYEE_NAME
+        value: "Smart Parking System"
+
+  # --------------------------------------------------------
+  # SERVICE 1: FRONTEND (React 18 + Vite 6 Static Site)
+  # --------------------------------------------------------
+  - type: web
+    name: parksmart-frontend
+    runtime: static
+    plan: free
+    region: oregon
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      # SPA rewrite rule: maps all client routes to index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: parksmart-backend
+          property: url
